@@ -1,0 +1,4 @@
+have different "tabs" for different locations
+
+you can swipe between them on mobile
+

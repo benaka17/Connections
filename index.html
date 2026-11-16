@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17121f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#efe6db" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Departures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Colours: dusk (dark) and faded photo (light) */
+:root{
+  --bg:#efe6db; --glow1:rgba(201,120,135,.22); --glow2:rgba(214,166,84,.18);
+  --ink:#1c1522; --muted:#574a5d; --rose:#94394f; --sun:#7a4f0e;
+  --late:#a8380f; --ok:#2f6a37; --rule:rgba(28,21,34,.22); --grain:.07;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#17121f; --glow1:rgba(176,96,128,.24); --glow2:rgba(214,160,90,.12);
+    --ink:#fbf5f0; --muted:#cbbdd2; --rose:#f0b3bf; --sun:#f5cd7f;
+    --late:#ffa58c; --ok:#b9e0ae; --rule:rgba(251,245,240,.2); --grain:.09;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17121f; --glow1:rgba(176,96,128,.24); --glow2:rgba(214,160,90,.12);
+  --ink:#fbf5f0; --muted:#cbbdd2; --rose:#f0b3bf; --sun:#f5cd7f;
+  --late:#ffa58c; --ok:#b9e0ae; --rule:rgba(251,245,240,.2); --grain:.09;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);
+  background-image:
+    radial-gradient(120% 60% at 15% -10%, var(--glow1), transparent 60%),
+    radial-gradient(90% 50% at 100% 0%, var(--glow2), transparent 65%);
+  background-attachment:fixed;
+  color:var(--ink);
+  font-family:"Karla",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.45;
+  font-variant-numeric:tabular-nums;
+  overflow-x:hidden;
+  display:flex; flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+/* Film grain */
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+  opacity:var(--grain); mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--sun);outline-offset:3px;border-radius:4px}
+
+header{width:100%;max-width:480px;margin:0 auto;padding:18px 22px 0}
+.greet{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:1.2rem;color:var(--muted);margin:0 0 10px}
+
+/* Tabs */
+#tabs{display:flex;gap:26px;overflow-x:auto;scrollbar-width:none;margin:0 -22px;padding:0 22px 4px;border-bottom:1px solid var(--rule)}
+#tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font-family:"Cormorant Garamond",Georgia,serif;font-size:1.3rem;font-weight:500;
+  color:var(--muted);padding:6px 0 10px;position:relative;transition:color .25s}
+.tab::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:2px;background:var(--sun);
+  transform:scaleX(0);transform-origin:left;transition:transform .3s ease}
+.tab.on{color:var(--ink)}
+.tab.on::after{transform:scaleX(1)}
+
+/* Swipeable area */
+#pager{flex:1 0 auto;display:flex;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+#pager::-webkit-scrollbar{display:none}
+.panel{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;padding:0 22px}
+.inner{max-width:436px;margin:0 auto;padding-top:20px}
+
+/* Route */
+.route{display:flex;align-items:center;gap:16px}
+.stops{flex:1;min-width:0;position:relative;padding-left:20px}
+.stops::before{content:"";position:absolute;left:4px;top:.85em;bottom:.85em;width:1px;background:linear-gradient(var(--rose),var(--sun))}
+.stop{position:relative;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stop::before{content:"";position:absolute;left:-20px;top:.5em;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1.5px solid var(--rose)}
+.stop.to::before{border-color:var(--sun);background:var(--sun)}
+.stop+.stop{margin-top:8px}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid var(--rule);color:var(--muted);display:grid;place-items:center;flex:none;transition:transform .45s ease,color .2s}
+.swap:hover{color:var(--ink)}
+.swap.turn{transform:rotate(180deg)}
+.swap svg{width:20px;height:20px}
+
+/* Next departure */
+.board{margin-top:22px}
+.hero{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px 16px;padding:20px 0 18px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.label{grid-column:1 / -1;margin:0;font-size:.85rem;color:var(--muted)}
+.when{margin:0;line-height:1;display:flex;align-items:baseline;gap:6px}
+.num{font-weight:700;font-size:clamp(2.5rem,12vw,3.1rem);letter-spacing:-.03em;color:var(--sun)}
+.unit{font-size:1rem;font-weight:700;color:var(--sun)}
+.clock{margin:0;text-align:right;line-height:1.2}
+.clock b{display:block;font-size:1.5rem;font-weight:700}
+.clock span{font-size:.85rem;color:var(--muted)}
+.lead{grid-column:1 / -1;margin:4px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.badge{display:inline-block;font-weight:700;font-size:.85rem;color:var(--rose);border:1.5px solid currentColor;border-radius:4px;padding:0 6px;line-height:1.5}
+.dir{font-weight:600;min-width:0}
+.status{font-size:.85rem;font-weight:700;border-radius:4px;padding:1px 7px}
+.status.late{color:var(--late);background:color-mix(in srgb,var(--late) 14%,transparent)}
+.status.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.facts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:2px 16px;margin:2px 0 0;color:var(--muted);font-size:.85rem}
+
+/* Later departures */
+.later{list-style:none;margin:0;padding:0}
+.item{border-bottom:1px solid var(--rule)}
+.row{display:grid;grid-template-columns:4.2rem 1fr auto;align-items:center;gap:12px;padding:12px 0;width:100%;text-align:left}
+.row .in{font-weight:700;font-size:1.05rem}
+.row .in small{font-weight:500;font-size:.8rem;color:var(--muted);margin-left:2px}
+.row .what{min-width:0;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden}
+.row .what .dir{overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.chg{flex:none;display:inline-flex;align-items:center;gap:3px;font-size:.8rem;font-weight:600;color:var(--rose)}
+.chev{width:14px;height:14px;transition:transform .25s}
+[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.more{grid-column:1 / -1;justify-self:start;display:inline-flex;align-items:center;gap:4px;color:var(--rose);font-weight:700;font-size:.9rem;padding:8px 0 0}
+
+/* Journey steps */
+.steps{grid-column:1 / -1;list-style:none;margin:6px 0 12px 5px;padding:0 0 0 18px;border-left:1.5px solid var(--rule)}
+.steps li{position:relative;padding:5px 0}
+.steps li::before{content:"";position:absolute;left:-23.5px;top:.75em;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1.5px solid var(--muted)}
+.steps .sl{display:flex;gap:12px;align-items:baseline}
+.steps .sl b{flex:none;min-width:2.9rem;font-weight:700}
+.steps .via{display:flex;align-items:center;gap:8px;margin:6px 0 6px 3.65rem;font-size:.9rem;color:var(--muted)}
+.steps li.ride::before{border-color:var(--rose);background:var(--rose)}
+.steps li.xfer{font-size:.88rem;font-weight:700;color:var(--sun)}
+.steps li.xfer::before{border-color:var(--sun)}
+.steps li.walk{font-size:.88rem;color:var(--muted);font-style:italic}
+.row .t{text-align:right;line-height:1.25}
+.row .t b{display:block;font-weight:600}
+.row .t .late{font-size:.78rem;font-weight:700;color:var(--late)}
+
+.bar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 0;color:var(--muted);font-size:.82rem}
+.reload{color:var(--rose);font-weight:600;padding:10px 0 10px 10px}
+.note{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:1.25rem;color:var(--muted);margin:10px 0 0;line-height:1.35}
+.note small{display:block;font-family:"Karla",system-ui,sans-serif;font-style:normal;font-size:.78rem;margin-top:8px;opacity:.8}
+.haze{animation:haze 2.4s ease-in-out infinite}
+@keyframes haze{50%{opacity:.35}}
+
+.hint{text-align:center;color:var(--muted);font-size:.78rem;margin:22px 0 0;transition:opacity .4s}
+.hint.gone{opacity:0}
+footer{max-width:436px;margin:0 auto;padding:22px 22px 26px;color:var(--muted);font-size:.72rem;text-align:center;line-height:1.6}
+footer a{color:inherit}
+
+@media (prefers-reduced-motion:reduce){
+  .haze{animation:none}
+  .swap,.tab::after,.chev{transition:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <p class="greet" id="greet">Your next departures</p>
+  <nav id="tabs" aria-label="Routes"></nav>
+</header>
+
+<main id="pager"></main>
+<p class="hint" id="hint">Swipe for the next route</p>
+
+<footer>Timetable data from <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a>,
+map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.<br>
+Times may change without notice.</footer>
+
+<script>
+// ADD YOUR ROUTES HERE – each entry becomes a tab.
+// modes: "BUS" = bus only, "BUS,TRAM" = bus + tram, "TRANSIT" = everything (incl. S-Bahn/trains)
+// line (optional): preferred line – only matching departures are shown if any exist.
+const ROUTES = [
+  { label: "Uni",        from: "Köln, Karl-Schwering-Platz", to: "Köln, Wiso-Fakultät",    modes: "BUS", line: "136" },
+  { label: "Schlebusch", from: "Köln, Karl-Schwering-Platz", to: "Leverkusen, Schlebusch", modes: "TRANSIT" },
+  // { label: "No. 3", from: "…", to: "…", modes: "TRANSIT" },   // add a third route here
+];
+const API = "https://api.transitous.org/api";
+
+const $ = id => document.getElementById(id);
+const hhmm = d => d.toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const strip = s => s.replace(/^(Köln|Leverkusen), /, "");
+const changes = n => n === 1 ? "1 change" : `${n} changes`;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const stopCache = {};
+const state = ROUTES.map(r => ({...r, last: 0, its: null, err: null, open: new Set()}));
+let active = 0;
+
+const panel = i => document.querySelector(`.panel[data-i="${i}"]`);
+const legOf = it => it.legs.find(l => l.mode !== "WALK") || it.legs[0];
+const depOf = it => new Date(legOf(it).startTime);
+const delayOf = l => (!l.realTime || !l.scheduledStartTime) ? null :
+  Math.round((new Date(l.startTime) - new Date(l.scheduledStartTime)) / 60000);
+
+function greet(){
+  const h = new Date().getHours();
+  $("greet").textContent = h < 5  ? "Still up? Here’s what’s running." :
+                           h < 11 ? "Good morning." :
+                           h < 17 ? "Hi, you." :
+                                    "Good evening.";
+}
+
+/* ---------- Setup ---------- */
+const swapIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v15M4.5 15.5 8 19l3.5-3.5M16 20V5M12.5 8.5 16 5l3.5 3.5"/></svg>`;
+
+function build(){
+  $("tabs").innerHTML = state.map((r, i) =>
+    `<button class="tab" data-i="${i}">${esc(r.label)}</button>`).join("");
+  $("pager").innerHTML = state.map((r, i) => `
+    <section class="panel" data-i="${i}" aria-label="${esc(r.label)}"><div class="inner">
+      <div class="route">
+        <div class="stops">
+          <div class="stop from"></div>
+          <div class="stop to"></div>
+        </div>
+        <button class="swap" aria-label="Switch direction">${swapIcon}</button>
+      </div>
+      <div class="board"><p class="note haze">Loading departures …</p></div>
+      <div class="bar"><span class="upd"></span><button class="reload">Refresh</button></div>
+    </div></section>`).join("");
+  if (state.length < 2){ $("tabs").hidden = true; $("hint").hidden = true; }
+
+  document.querySelectorAll(".tab").forEach(t => t.onclick = () => goTo(+t.dataset.i));
+  document.querySelectorAll(".panel").forEach(p => {
+    const i = +p.dataset.i;
+    const sw = p.querySelector(".swap");
+    sw.onclick = () => {
+      [state[i].from, state[i].to] = [state[i].to, state[i].from];
+      state[i].its = null;
+      state[i].open.clear();
+      sw.classList.toggle("turn");
+      load(i);
+    };
+    p.querySelector(".reload").onclick = () => load(i);
+    p.querySelector(".board").addEventListener("click", e => {    // expand / collapse a journey
+      const b = e.target.closest("[data-k]");
+      if (!b) return;
+      const k = b.dataset.k, open = state[i].open;
+      open.has(k) ? open.delete(k) : open.add(k);
+      render(i);
+    });
+    showStops(i);
+  });
+  $("pager").addEventListener("scroll", onScroll, {passive:true});
+  setActive(0);
+}
+
+function showStops(i){
+  const p = panel(i), r = state[i];
+  p.querySelector(".from").textContent = strip(r.from);
+  p.querySelector(".to").textContent = strip(r.to);
+}
+
+function goTo(i){
+  $("pager").scrollTo({left: i * $("pager").clientWidth, behavior: reduceMotion ? "auto" : "smooth"});
+}
+
+let scrollT;
+function onScroll(){
+  $("hint").classList.add("gone");
+  clearTimeout(scrollT);
+  scrollT = setTimeout(() => {
+    const p = $("pager");
+    setActive(Math.round(p.scrollLeft / p.clientWidth));
+  }, 60);
+}
+
+function setActive(i){
+  active = Math.max(0, Math.min(state.length - 1, i));
+  document.querySelectorAll(".tab").forEach((t, k) => {
+    const on = k === active;
+    t.classList.toggle("on", on);
+    t.setAttribute("aria-current", on ? "true" : "false");
+    if (on) t.scrollIntoView({inline:"center", block:"nearest", behavior: reduceMotion ? "auto" : "smooth"});
+  });
+  if (Date.now() - state[active].last > 30000) load(active);   // reload if older than 30 s
+}
+
+/* ---------- Data ---------- */
+async function stopId(name){
+  if (stopCache[name]) return stopCache[name];
+  const r = await fetch(`${API}/v1/geocode?text=${encodeURIComponent(name)}&type=STOP&language=de`);
+  if (!r.ok) throw new Error("Stop search failed (" + r.status + ")");
+  const j = await r.json();
+  if (!j.length) throw new Error("Stop not found: " + name);
+  return stopCache[name] = j[0].id;
+}
+
+async function load(i){
+  const r = state[i];
+  showStops(i);
+  const p = panel(i);
+  if (!r.its) p.querySelector(".board").innerHTML = '<p class="note haze">Loading departures …</p>';
+  p.querySelector(".upd").textContent = "Updating …";
+  try{
+    const [a, b] = await Promise.all([stopId(r.from), stopId(r.to)]);
+    const q = new URLSearchParams({fromPlace:a, toPlace:b, transitModes:r.modes, numItineraries:"8", language:"de"});
+    const res = await fetch(`${API}/v5/plan?${q}`);
+    if (!res.ok) throw new Error("Route search failed (" + res.status + ")");
+    const data = await res.json();
+    r.its = data.itineraries || [];
+    r.err = null;
+    r.last = Date.now();
+    p.querySelector(".upd").textContent = "Updated " + hhmm(new Date());
+  }catch(e){
+    console.error(e);
+    r.its = null;
+    r.err = e.message;
+    p.querySelector(".upd").textContent = "";
+  }
+  render(i);
+}
+
+/* ---------- Display ---------- */
+const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
+const keyOf = it => legOf(it).startTime + "|" + it.endTime;
+const lineOf = l => l.routeShortName || l.displayName || "";
+const mins = (a, b) => Math.round((new Date(b) - new Date(a)) / 60000);
+
+// Step-by-step view of one journey: rides, walks and where to change
+function stepsHTML(it){
+  const legs = it.legs;
+  const out = [];
+  let lastRide = null;
+  legs.forEach((l, k) => {
+    if (l.mode === "WALK"){
+      const w = mins(l.startTime, l.endTime);
+      if (w >= 1) out.push(`<li class="walk">Walk ${w} min to ${esc(l.to.name)}</li>`);
+      return;
+    }
+    if (lastRide){
+      const wait = mins(lastRide.endTime, l.startTime);
+      out.splice(out.length - (legs[k-1].mode === "WALK" && mins(legs[k-1].startTime, legs[k-1].endTime) >= 1 ? 1 : 0), 0,
+        `<li class="xfer">Change to the ${esc(lineOf(l) || "next connection")}, ${wait} min to switch</li>`);
+    }
+    const ln = lineOf(l), d = delayOf(l);
+    out.push(`<li class="ride">
+      <div class="sl"><b>${hhmm(new Date(l.startTime))}</b><span>${esc(l.from.name)}</span></div>
+      <div class="via">${ln ? `<span class="badge">${esc(ln)}</span>` : ""}<span>towards ${esc(l.headsign || l.to.name)}${d > 0 ? `, <span class="late">${d} min late</span>` : ""}</span></div>
+      <div class="sl"><b>${hhmm(new Date(l.endTime))}</b><span>${esc(l.to.name)}</span></div>
+    </li>`);
+    lastRide = l;
+  });
+  return `<ol class="steps">${out.join("")}</ol>`;
+}
+
+function render(i){
+  const r = state[i], board = panel(i).querySelector(".board");
+  if (r.err){
+    board.innerHTML = `<p class="note">Couldn’t load departures. Check your connection and tap Refresh.<small>${esc(r.err)}</small></p>`;
+    return;
+  }
+  if (!r.its) return;
+
+  const now = Date.now();
+  let its = r.its.filter(it => depOf(it) > now - 30000);           // hide buses that already left
+  if (r.line){
+    const m = its.filter(it => legOf(it).routeShortName === r.line);
+    if (m.length) its = m;
+  }
+  if (!its.length){
+    board.innerHTML = `<p class="note">No connections right now. Tap Refresh in a little while.</p>`;
+    return;
+  }
+
+  const [first, ...rest] = its;
+  const leg = legOf(first);
+  const dep = depOf(first), arr = new Date(first.endTime);
+  const mins = Math.max(0, Math.round((dep - now) / 60000));
+  const line = leg.routeShortName || leg.displayName || "";
+  const dir = leg.headsign || strip(r.to);
+  const d = delayOf(leg);
+  const status = d === null ? "" : d > 0
+    ? `<span class="status late">${d} min late</span>`
+    : `<span class="status ok">On time</span>`;
+  const facts = [
+    `Arrives ${hhmm(arr)}`,
+    `${Math.round((arr - dep) / 60000)} min ride`,
+    first.transfers ? changes(first.transfers) : ""
+  ].filter(Boolean).map(f => `<span>${f}</span>`).join("");
+
+  const hero = `
+    <div class="hero">
+      <p class="label">Next ${line ? esc(line) : "departure"}</p>
+      <p class="when">${mins === 0
+        ? `<span class="num">Now</span>`
+        : `<span class="num">${mins}</span><span class="unit">min</span>`}</p>
+      <p class="clock"><b>${hhmm(dep)}</b><span>departs</span></p>
+      <p class="lead">${line ? `<span class="badge">${esc(line)}</span>` : ""}<span class="dir">to ${esc(dir)}</span>${status}</p>
+      <p class="facts">${facts}</p>
+      ${first.transfers ? (() => {
+        const k = keyOf(first), isOpen = r.open.has(k);
+        return `<button class="more" data-k="${esc(k)}" aria-expanded="${isOpen}">${isOpen ? "Hide" : "Show"} ${changes(first.transfers)}${chev}</button>${isOpen ? stepsHTML(first) : ""}`;
+      })() : ""}
+    </div>`;
+
+  const rows = rest.slice(0, 5).map(it => {
+    const l = legOf(it), t = depOf(it);
+    const m = Math.max(0, Math.round((t - now) / 60000));
+    const ln = l.routeShortName || l.displayName || "";
+    const dl = delayOf(l);
+    const inner = `
+      <span class="in">${m === 0 ? "Now" : `${m}<small>min</small>`}</span>
+      <span class="what">${ln ? `<span class="badge">${esc(ln)}</span>` : ""}<span class="dir">${esc(l.headsign || strip(r.to))}</span>${it.transfers ? `<span class="chg">${changes(it.transfers)}${chev}</span>` : ""}</span>
+      <span class="t"><b>${hhmm(t)}</b>${dl > 0 ? `<span class="late">+${dl} min</span>` : ""}</span>`;
+    if (!it.transfers) return `<li class="item"><div class="row">${inner}</div></li>`;
+    const k = keyOf(it), isOpen = r.open.has(k);
+    return `<li class="item"><button class="row" data-k="${esc(k)}" aria-expanded="${isOpen}">${inner}</button>${isOpen ? stepsHTML(it) : ""}</li>`;
+  }).join("");
+
+  board.innerHTML = hero + (rows ? `<ol class="later">${rows}</ol>` : "");
+}
+
+build();
+greet();
+setInterval(() => state.forEach((_, i) => render(i)), 15000);  // tick the countdown without reloading
+setInterval(() => load(active), 60000);                         // reload the active tab every minute
+setInterval(greet, 600000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden){ greet(); load(active); } });
+window.addEventListener("resize", () => goTo(active));          // stay on the same tab when rotating
+</script>
+</body>
+</html>
